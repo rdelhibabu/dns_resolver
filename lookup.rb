@@ -18,19 +18,22 @@ domain = get_command_line_argument
 # https://www.rubydoc.info/stdlib/core/IO:readlines
 dns_raw = File.readlines("zone")
 
-dns_raw.delete_if { |x| x.include? "#" }
-dns_raw.delete_if { |x| x == "\n" }
-dns_raw.each { |x| x.delete! "\n" }
-dns_raw = dns_raw.map { |x| x.split(", ") }
+def convert_to_hash(acc, current)
+  key = current.shift
+  acc[key] ||= {}
+  acc[key].merge!({ current.shift => current.shift })
+  acc
+end
 
-def parse_dns(array)
-  hash = {}
-  array.map do |nested|
-    key = nested.shift
-    hash[key] ||= {}
-    hash[key].merge!({ nested.shift => nested.shift })
-  end
-  hash
+
+
+def parse_zone_file(raw)
+  raw
+    .reject { |line| line.include? '#' }
+    .map(&:strip)
+    .reject(&:empty?)
+    .map { |line| line.strip.split(', ') }
+    .reduce({}) { |acc, current| convert_to_hash(acc, current) }
 end
 
 
@@ -48,10 +51,10 @@ end
 # To complete the assignment, implement `parse_dns` and `resolve`.
 # Remember to implement them above this line since in Ruby
 # you can invoke a function only after it is defined.
-dns_records = parse_dns(dns_raw)
+
+dns_records = parse_zone_file(dns_raw)
 A_record = dns_records["A"]
 CNAME = dns_records["CNAME"]
-dns_records = parse_dns(dns_raw)
 lookup_chain = [domain]
 lookup_chain = resolve(dns_records, lookup_chain, domain)
 puts lookup_chain.join(" => ")
